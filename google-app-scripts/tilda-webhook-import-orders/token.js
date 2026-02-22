@@ -1,12 +1,12 @@
 function getApiToken() {
-    return PropertiesService.getScriptProperties().getProperty("API_TOKEN");
+  return PropertiesService.getScriptProperties().getProperty("API_TOKEN");
 }
 
 function validateToken(data) {
-    const token = data.apiKey;
-    const validToken = getApiToken();
+  const token = data.apiKey;
+  const validToken = getApiToken();
 
-    if (!token || token !== validToken) {
-        throw new Error("Unauthorized request");
-    }
+  if (!token || token !== validToken) {
+    throw new Error("Unauthorized request");
+  }
 }

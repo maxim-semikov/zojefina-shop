@@ -1,38 +1,64 @@
-
 function importAllOrders() {
   const SOURCE_SPREADSHEET_ID = getSourceSpreadsheetId();
-  const SOURCE_SHEET_NAME = 'Orders';
-  const TARGET_SHEET_NAME = 'Заказы';
+  const SOURCE_SHEET_NAME = "Orders";
+  const TARGET_SHEET_NAME = "Заказы";
 
-  const sourceSheet = SpreadsheetApp
-    .openById(SOURCE_SPREADSHEET_ID)
-    .getSheetByName(SOURCE_SHEET_NAME);
+  const sourceSheet = SpreadsheetApp.openById(
+    SOURCE_SPREADSHEET_ID,
+  ).getSheetByName(SOURCE_SHEET_NAME);
 
   if (!sourceSheet) {
     throw new Error(`Не найден лист ${SOURCE_SHEET_NAME} в источнике`);
   }
 
-  const targetSheet = getOrCreateSheet(TARGET_SHEET_NAME);
-
-  const data = sourceSheet.getDataRange().getValues();
-  if (data.length === 0) {
-    Logger.log('Источник пуст');
+  const sourceLastRow = sourceSheet.getLastRow();
+  if (sourceLastRow < 2) {
+    Logger.log("Нет новых данных в источнике");
     return;
   }
 
-  // ЧИСТИМ ТОЛЬКО ДАННЫЕ
-  targetSheet.clearContents();
+  const sourceLastCol = sourceSheet.getLastColumn();
+  const sourceHeaders = sourceSheet
+    .getRange(1, 1, 1, sourceLastCol)
+    .getValues()[0];
 
-  // КОПИРУЕМ ВСЁ КАК ЕСТЬ
+  const sourceDataRows = sourceSheet
+    .getRange(2, 1, sourceLastRow - 1, sourceLastCol)
+    .getValues();
+
+  const targetSheet = getOrCreateSheet(TARGET_SHEET_NAME);
+
+  let targetHeaders;
+  if (targetSheet.getLastRow() === 0) {
+    targetHeaders = sourceHeaders;
+    targetSheet
+      .getRange(1, 1, 1, targetHeaders.length)
+      .setValues([targetHeaders]);
+    targetSheet.setFrozenRows(1);
+  } else {
+    targetHeaders = targetSheet
+      .getRange(1, 1, 1, targetSheet.getLastColumn())
+      .getValues()[0];
+  }
+
+  const columnMapping = targetHeaders.map((header) =>
+    sourceHeaders.indexOf(header),
+  );
+
+  const mappedRows = sourceDataRows.map((row) =>
+    columnMapping.map((srcIdx) => (srcIdx !== -1 ? row[srcIdx] : "")),
+  );
+
+  const targetLastRow = targetSheet.getLastRow();
   targetSheet
-    .getRange(1, 1, data.length, data[0].length)
-    .setValues(data);
-
-  targetSheet.setFrozenRows(1);
+    .getRange(targetLastRow + 1, 1, mappedRows.length, targetHeaders.length)
+    .setValues(mappedRows);
 
   ensureSingleFilter(targetSheet);
 
   colorOrdersByOrderIdBatch(targetSheet);
+
+  sourceSheet.deleteRows(2, sourceLastRow - 1);
 }
 
 function colorOrdersByOrderIdBatch(sheet) {
@@ -42,19 +68,13 @@ function colorOrdersByOrderIdBatch(sheet) {
   if (values.length < 2) return;
 
   const header = values[0];
-  const ORDER_ID_COL = header.indexOf('Номер заказа');
+  const ORDER_ID_COL = header.indexOf("Номер заказа");
 
   if (ORDER_ID_COL === -1) {
     throw new Error('Не найден столбец "Номер заказа"');
   }
 
-  const COLORS = [
-    '#FDEDEC',
-    '#E8F8F5',
-    '#EBF5FB',
-    '#FEF9E7',
-    '#F5EEF8'
-  ];
+  const COLORS = ["#FDEDEC", "#E8F8F5", "#EBF5FB", "#FEF9E7", "#F5EEF8"];
 
   const bg = [];
   let lastOrderId = null;
@@ -76,4 +96,3 @@ function colorOrdersByOrderIdBatch(sheet) {
 
   range.setBackgrounds(bg);
 }
-

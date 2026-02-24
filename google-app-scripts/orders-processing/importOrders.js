@@ -1,4 +1,4 @@
-function importAllOrders() {
+function importOrders() {
   const SOURCE_SPREADSHEET_ID = getSourceSpreadsheetId();
   const SOURCE_SHEET_NAME = "Orders";
   const TARGET_SHEET_NAME = "Заказы";

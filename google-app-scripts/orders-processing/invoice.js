@@ -33,7 +33,8 @@ function buildInvoiceByOrderId(orderId) {
   const deliveryDateCol = idx("Дата доставки");
   const dishCol = idx("Блюдо");
   const qtyCol = idx("Кол-во");
-  const priceCol = idx("Цена (общая)");
+  const priceCol = idx("Цена за шт");
+  const amountCol = idx("Сумма позиции");
   const caloriesCol = idx("Калории");
 
   const nameCol = idx("Клиент");
@@ -96,9 +97,10 @@ function buildInvoiceByOrderId(orderId) {
     if (!dish || qty <= 0) return;
 
     const price = priceCol !== -1 ? Number(r[priceCol]) || 0 : 0;
+    const amount = amountCol !== -1 ? Number(r[amountCol]) || 0 : 0;
     const calories = caloriesCol !== -1 ? r[caloriesCol] || "" : "";
 
-    deliveries[key].items.push({ dish, calories, qty, price });
+    deliveries[key].items.push({ dish, calories, qty, price, amount });
   });
 
   createInvoiceSheet(orderId, client, deliveries, orderInfo);
@@ -199,12 +201,10 @@ function createInvoiceSheet(orderId, client, deliveries, orderInfo) {
     const firstItemRow = row;
 
     delivery.items.forEach((item) => {
-      // price — это общая сумма позиции, вычисляем цену за штуку
-      const unitPrice = item.qty > 0 ? item.price / item.qty : item.price;
       sheet
         .getRange(row, 1, 1, NUM_COLS)
         .setValues([
-          [item.dish, item.calories, item.qty, unitPrice, item.price],
+          [item.dish, item.calories, item.qty, item.price, item.amount],
         ]);
       row++;
     });

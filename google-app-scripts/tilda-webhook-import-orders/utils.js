@@ -57,6 +57,22 @@ function buildRowsFromOrder(data) {
   const products = data.payment?.products || [];
 
   return products
+    .filter((product) => {
+      const name = (product.name || "").trim();
+      const qty = Number(product.quantity);
+
+      if (!name) {
+        logError(`Пропущен продукт без названия в заказе ${orderMeta.orderId}`);
+        return false;
+      }
+      if (!qty || isNaN(qty) || qty <= 0) {
+        logError(
+          `Пропущен продукт "${name}" с невалидным кол-вом (${product.quantity}) в заказе ${orderMeta.orderId}`,
+        );
+        return false;
+      }
+      return true;
+    })
     .map((product) => {
       const productMeta = extractProductMeta(product);
       const orderObject = createOrderObject(orderMeta, productMeta);

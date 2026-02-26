@@ -63,22 +63,53 @@ function importOrders() {
     sourceHeaders.indexOf(header),
   );
 
-  const mappedRows = sourceDataRows.map((row) =>
+  const allMappedRows = sourceDataRows.map((row) =>
     columnMapping.map((srcIdx) => (srcIdx !== -1 ? row[srcIdx] : "")),
   );
+
+  // Валидация строк
+  const validRows = [];
+  const validOriginalIndices = [];
+  const invalidDetails = [];
+
+  allMappedRows.forEach((row, i) => {
+    const result = validateRow(row, targetHeaders);
+    if (result.valid) {
+      validRows.push(row);
+      validOriginalIndices.push(rowsWithOriginalIndex[i]);
+    } else {
+      invalidDetails.push(
+        `Строка ${rowsWithOriginalIndex[i].sourceRowNumber}: ${result.errors.join(", ")}`,
+      );
+    }
+  });
+
+  if (invalidDetails.length > 0) {
+    const ui = SpreadsheetApp.getUi();
+    ui.alert(
+      "Невалидные строки",
+      `Пропущено ${invalidDetails.length} невалидных строк:\n\n${invalidDetails.join("\n")}`,
+      ui.ButtonSet.OK,
+    );
+  }
+
+  if (validRows.length === 0) {
+    Logger.log("Нет валидных строк для импорта");
+    return;
+  }
 
   try {
     const targetLastRow = targetSheet.getLastRow();
     targetSheet
-      .getRange(targetLastRow + 1, 1, mappedRows.length, targetHeaders.length)
-      .setValues(mappedRows);
+      .getRange(targetLastRow + 1, 1, validRows.length, targetHeaders.length)
+      .setValues(validRows);
 
     ensureSingleFilter(targetSheet);
     colorOrdersByOrderIdBatch(targetSheet);
 
     // Помечаем успешно импортированные строки в источнике
     if (importStatusColIndex !== -1) {
-      rowsWithOriginalIndex.forEach((item) => {
+      validOriginalIndices.forEach((item) => {
         sourceSheet
           .getRange(item.sourceRowNumber, importStatusColIndex + 1)
           .setValue("imported");
@@ -86,7 +117,7 @@ function importOrders() {
     }
 
     Logger.log(
-      `Импортировано ${mappedRows.length} строк. Строки помечены как imported.`,
+      `Импортировано ${validRows.length} строк. Строки помечены как imported.`,
     );
   } catch (e) {
     Logger.log(`Ошибка при вставке строк: ${e.message}`);

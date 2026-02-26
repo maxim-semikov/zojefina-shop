@@ -117,6 +117,7 @@ function createOrderObject(meta, product) {
     dish: product.dish,
     qty: product.qty,
     price: product.price,
+    amount: product.amount,
     calories: product.calories,
 
     delivery_date: "",
@@ -169,7 +170,8 @@ function extractProductMeta(product) {
     day,
     dish: product.name || "",
     qty: product.quantity || 0,
-    price: product.amount || 0,
+    price: product.price || 0,
+    amount: product.amount || 0,
     calories,
   };
 }

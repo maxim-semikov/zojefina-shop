@@ -19,7 +19,8 @@ const COLUMN_CONFIG = [
   { key: "dish", label: "Блюдо" },
   { key: "qty", label: "Кол-во" },
 
-  { key: "price", label: "Цена (общая)" },
+  { key: "price", label: "Цена за шт" },
+  { key: "amount", label: "Сумма позиции" },
   { key: "final_amount", label: "Итоговая сумма" },
   { key: "promocode", label: "Промокод" },
   { key: "discount_value", label: "Размер скидки (%)" },

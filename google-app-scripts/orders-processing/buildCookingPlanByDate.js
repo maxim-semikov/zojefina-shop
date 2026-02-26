@@ -59,10 +59,20 @@ function buildCookingPlanByDate() {
   const output = [];
   const backgrounds = [];
 
+  const TITLE_COLOR = '#34495E';
+  const HEADER_COLOR = '#D5DBDB';
   const DATE_COLOR = '#EBF5FB';
   const ITEM_COLOR = '#FFFFFF';
   const NO_DATE_TITLE_COLOR = '#FADBD8';
   const NO_DATE_ROW_COLOR = '#FDEDEC';
+
+  // Заголовок страницы
+  output.push(['План приготовления', '', '']);
+  backgrounds.push([TITLE_COLOR, TITLE_COLOR, TITLE_COLOR]);
+
+  // Заголовки колонок
+  output.push(['Дата доставки', 'Блюдо', 'Количество']);
+  backgrounds.push([HEADER_COLOR, HEADER_COLOR, HEADER_COLOR]);
 
   const sortedDates = Object.keys(planMap).sort();
 
@@ -113,6 +123,17 @@ function buildCookingPlanByDate() {
     .setValues(output)
     .setBackgrounds(backgrounds);
 
-  targetSheet.setFrozenRows(0);
-  targetSheet.getRange('A1:C1').setFontWeight('bold');
+  // Форматирование заголовка страницы
+  const titleRange = targetSheet.getRange('A1:C1');
+  titleRange.merge();
+  titleRange.setFontSize(14);
+  titleRange.setFontWeight('bold');
+  titleRange.setFontColor('#FFFFFF');
+  titleRange.setHorizontalAlignment('center');
+  titleRange.setVerticalAlignment('middle');
+
+  // Форматирование заголовков колонок
+  targetSheet.getRange('A2:C2').setFontWeight('bold');
+
+  targetSheet.setFrozenRows(2);
 }

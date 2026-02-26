@@ -98,11 +98,28 @@ function importOrders() {
     return;
   }
 
+  // Заполняем дату доставки до записи в лист
+  assignDeliveryDates(validRows, targetHeaders);
+
   try {
     const targetLastRow = targetSheet.getLastRow();
     targetSheet
       .getRange(targetLastRow + 1, 1, validRows.length, targetHeaders.length)
       .setValues(validRows);
+
+    // Подсвечиваем автозаполненные даты доставки синим цветом текста
+    const deliveryDateIdx = targetHeaders.indexOf("Дата доставки");
+    if (deliveryDateIdx !== -1) {
+      const AUTO_FILL_TEXT_COLOR = "#1565C0";
+      const col = deliveryDateIdx + 1; // 1-based
+      validRows.forEach((row, i) => {
+        if (row[deliveryDateIdx]) {
+          targetSheet
+            .getRange(targetLastRow + 1 + i, col)
+            .setFontColor(AUTO_FILL_TEXT_COLOR);
+        }
+      });
+    }
 
     ensureSingleFilter(targetSheet);
     colorOrdersByOrderIdBatch(targetSheet);
@@ -123,6 +140,111 @@ function importOrders() {
     Logger.log(`Ошибка при вставке строк: ${e.message}`);
     throw e;
   }
+}
+
+/**
+ * Автозаполнение даты доставки на основе «День према» и «Тип доставки».
+ * Мутирует строки в массиве rows.
+ */
+function assignDeliveryDates(rows, headers) {
+  const deliveryDateIdx = headers.indexOf("Дата доставки");
+  const dayIdx = headers.indexOf("День према");
+  const deliveryTypeIdx = headers.indexOf("Тип доставки");
+  const orderIdIdx = headers.indexOf("Номер заказа");
+  const orderDateIdx = headers.indexOf("Дата заказа");
+
+  if (deliveryDateIdx === -1 || dayIdx === -1 || deliveryTypeIdx === -1) {
+    Logger.log("assignDeliveryDates: не найдены необходимые столбцы");
+    return;
+  }
+
+  // Группируем строки по номеру заказа
+  const orderGroups = {};
+  rows.forEach((row, i) => {
+    const orderId = orderIdIdx !== -1 ? String(row[orderIdIdx]) : "unknown";
+    if (!orderGroups[orderId]) {
+      orderGroups[orderId] = [];
+    }
+    orderGroups[orderId].push(i);
+  });
+
+  Object.keys(orderGroups).forEach((orderId) => {
+    const indices = orderGroups[orderId];
+    const firstRow = rows[indices[0]];
+    const deliveryType = String(firstRow[deliveryTypeIdx] || "").trim();
+    const orderDate =
+      orderDateIdx !== -1 && firstRow[orderDateIdx] instanceof Date
+        ? firstRow[orderDateIdx]
+        : new Date();
+
+    if (deliveryType.indexOf("Ежедневная") !== -1) {
+      // --- Ежедневная доставка: каждое блюдо получает ближайшую дату своего дня ---
+      indices.forEach((i) => {
+        const day = String(rows[i][dayIdx] || "").trim();
+        if (!day) return; // пустой день — не трогаем
+        const date = calculateDeliveryDate(day, orderDate);
+        if (date) rows[i][deliveryDateIdx] = date;
+      });
+    } else if (
+      deliveryType.indexOf("раз в два дня") !== -1 ||
+      deliveryType.indexOf("два дня") !== -1
+    ) {
+      // --- Раз в два дня: группируем парами смежных дней ---
+      // Собираем уникальные дни с их строками
+      const dayRows = {};
+      indices.forEach((i) => {
+        const day = String(rows[i][dayIdx] || "").trim();
+        if (!day) return;
+        if (!dayRows[day]) dayRows[day] = [];
+        dayRows[day].push(i);
+      });
+
+      const sortedDays = Object.keys(dayRows).sort(
+        (a, b) => getDaySortIndex(a) - getDaySortIndex(b),
+      );
+
+      // Разбиваем на пары
+      for (let p = 0; p < sortedDays.length; p += 2) {
+        const firstDay = sortedDays[p];
+        const date = calculateDeliveryDate(firstDay, orderDate);
+
+        // Первый день пары
+        dayRows[firstDay].forEach((i) => {
+          if (date) rows[i][deliveryDateIdx] = date;
+        });
+
+        // Второй день пары (если есть)
+        if (p + 1 < sortedDays.length) {
+          const secondDay = sortedDays[p + 1];
+          dayRows[secondDay].forEach((i) => {
+            if (date) rows[i][deliveryDateIdx] = date;
+          });
+        }
+      }
+    } else if (deliveryType.indexOf("Единоразовая") !== -1) {
+      // --- Единоразовая: все блюда получают одну дату (ближайший минимальный день) ---
+      let minDaySortIdx = 99;
+      let minDayAbbr = "";
+
+      indices.forEach((i) => {
+        const day = String(rows[i][dayIdx] || "").trim();
+        if (!day) return;
+        const sortIdx = getDaySortIndex(day);
+        if (sortIdx < minDaySortIdx) {
+          minDaySortIdx = sortIdx;
+          minDayAbbr = day;
+        }
+      });
+
+      if (minDayAbbr) {
+        const date = calculateDeliveryDate(minDayAbbr, orderDate);
+        indices.forEach((i) => {
+          if (date) rows[i][deliveryDateIdx] = date;
+        });
+      }
+    }
+    // Неизвестный тип доставки — не трогаем даты
+  });
 }
 
 function colorOrdersByOrderIdBatch(sheet) {

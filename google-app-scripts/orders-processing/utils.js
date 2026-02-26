@@ -48,3 +48,39 @@ function validateRow(row, headers) {
 
   return { valid: errors.length === 0, errors };
 }
+
+/**
+ * Маппинг сокращений дней недели в JavaScript day index (0=Вс, 1=Пн, ..., 6=Сб)
+ */
+function getDayJsIndex(dayAbbr) {
+  const map = { Пн: 1, Вт: 2, Ср: 3, Чт: 4, Пт: 5, Сб: 6, Вс: 0 };
+  return map[dayAbbr] !== undefined ? map[dayAbbr] : -1;
+}
+
+/**
+ * Маппинг для сортировки (Пн=1 ... Вс=7)
+ */
+function getDaySortIndex(dayAbbr) {
+  const map = { Пн: 1, Вт: 2, Ср: 3, Чт: 4, Пт: 5, Сб: 6, Вс: 7 };
+  return map[dayAbbr] || 99;
+}
+
+/**
+ * Вычисляет ближайшую будущую дату для указанного дня недели.
+ * @param {string} dayAbbr — сокращение дня (Пн, Вт, ...)
+ * @param {Date} orderDate — дата заказа
+ * @returns {Date|null} — ближайшая дата (не ранее следующего дня после заказа)
+ */
+function calculateDeliveryDate(dayAbbr, orderDate) {
+  const targetDay = getDayJsIndex(dayAbbr);
+  if (targetDay === -1) return null;
+
+  const result = new Date(orderDate);
+  result.setDate(result.getDate() + 1); // не ранее следующего дня
+
+  while (result.getDay() !== targetDay) {
+    result.setDate(result.getDate() + 1);
+  }
+
+  return result;
+}

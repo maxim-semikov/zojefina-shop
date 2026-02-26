@@ -2,10 +2,10 @@ function importOrders() {
   const SOURCE_SPREADSHEET_ID = getSourceSpreadsheetId();
   const SOURCE_SHEET_NAME = "Orders";
   const TARGET_SHEET_NAME = "Заказы";
+  const IMPORT_STATUS_LABEL = "Статус импорта";
 
-  const sourceSheet = SpreadsheetApp.openById(
-    SOURCE_SPREADSHEET_ID,
-  ).getSheetByName(SOURCE_SHEET_NAME);
+  const sourceSpreadsheet = SpreadsheetApp.openById(SOURCE_SPREADSHEET_ID);
+  const sourceSheet = sourceSpreadsheet.getSheetByName(SOURCE_SHEET_NAME);
 
   if (!sourceSheet) {
     throw new Error(`Не найден лист ${SOURCE_SHEET_NAME} в источнике`);
@@ -22,15 +22,33 @@ function importOrders() {
     .getRange(1, 1, 1, sourceLastCol)
     .getValues()[0];
 
-  const sourceDataRows = sourceSheet
+  const importStatusColIndex = sourceHeaders.indexOf(IMPORT_STATUS_LABEL);
+
+  const allSourceDataRows = sourceSheet
     .getRange(2, 1, sourceLastRow - 1, sourceLastCol)
     .getValues();
+
+  // Фильтруем: берём только строки, где «Статус импорта» пустой или отсутствует
+  const rowsWithOriginalIndex = [];
+  allSourceDataRows.forEach((row, idx) => {
+    const status = importStatusColIndex !== -1 ? row[importStatusColIndex] : "";
+    if (!status || String(status).trim() === "") {
+      rowsWithOriginalIndex.push({ row, sourceRowNumber: idx + 2 }); // +2: header + 0-based
+    }
+  });
+
+  if (rowsWithOriginalIndex.length === 0) {
+    Logger.log("Нет новых (не импортированных) данных в источнике");
+    return;
+  }
+
+  const sourceDataRows = rowsWithOriginalIndex.map((r) => r.row);
 
   const targetSheet = getOrCreateSheet(TARGET_SHEET_NAME);
 
   let targetHeaders;
   if (targetSheet.getLastRow() === 0) {
-    targetHeaders = sourceHeaders;
+    targetHeaders = sourceHeaders.filter((h) => h !== IMPORT_STATUS_LABEL);
     targetSheet
       .getRange(1, 1, 1, targetHeaders.length)
       .setValues([targetHeaders]);
@@ -49,16 +67,31 @@ function importOrders() {
     columnMapping.map((srcIdx) => (srcIdx !== -1 ? row[srcIdx] : "")),
   );
 
-  const targetLastRow = targetSheet.getLastRow();
-  targetSheet
-    .getRange(targetLastRow + 1, 1, mappedRows.length, targetHeaders.length)
-    .setValues(mappedRows);
+  try {
+    const targetLastRow = targetSheet.getLastRow();
+    targetSheet
+      .getRange(targetLastRow + 1, 1, mappedRows.length, targetHeaders.length)
+      .setValues(mappedRows);
 
-  ensureSingleFilter(targetSheet);
+    ensureSingleFilter(targetSheet);
+    colorOrdersByOrderIdBatch(targetSheet);
 
-  colorOrdersByOrderIdBatch(targetSheet);
+    // Помечаем успешно импортированные строки в источнике
+    if (importStatusColIndex !== -1) {
+      rowsWithOriginalIndex.forEach((item) => {
+        sourceSheet
+          .getRange(item.sourceRowNumber, importStatusColIndex + 1)
+          .setValue("imported");
+      });
+    }
 
-  sourceSheet.deleteRows(2, sourceLastRow - 1);
+    Logger.log(
+      `Импортировано ${mappedRows.length} строк. Строки помечены как imported.`,
+    );
+  } catch (e) {
+    Logger.log(`Ошибка при вставке строк: ${e.message}`);
+    throw e;
+  }
 }
 
 function colorOrdersByOrderIdBatch(sheet) {

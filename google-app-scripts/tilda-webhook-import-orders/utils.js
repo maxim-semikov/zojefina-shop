@@ -10,7 +10,7 @@ function ensureHeader(sheet, withFilter) {
 
     sheet.getRange(1, 1, 1, headersCount).setValues([headers]);
 
-    if(withFilter) {
+    if (withFilter) {
       sheet.getRange(1, 1, 1, headersCount).createFilter();
       sheet.setFrozenRows(1);
     }
@@ -28,10 +28,8 @@ function getOrCreateSheet(name) {
 
 function appendRows(sheet, rows) {
   const startRow = sheet.getLastRow() + 1;
-  sheet
-    .getRange(startRow, 1, rows.length, rows[0].length)
-    .setValues(rows);
-  
+  sheet.getRange(startRow, 1, rows.length, rows[0].length).setValues(rows);
+
   return startRow;
 }
 
@@ -59,17 +57,17 @@ function buildRowsFromOrder(data) {
   const products = data.payment?.products || [];
 
   return products
-    .map(product => {
+    .map((product) => {
       const productMeta = extractProductMeta(product);
       const orderObject = createOrderObject(orderMeta, productMeta);
 
-     return {
+      return {
         sortIndex: getDayIndex(productMeta.day),
         values: buildRowFromObject(orderObject),
       };
     })
     .sort((a, b) => a.sortIndex - b.sortIndex)
-    .map(r => r.values);
+    .map((r) => r.values);
 }
 
 /*********************************
@@ -105,7 +103,8 @@ function createOrderObject(meta, product) {
     price: product.price,
     calories: product.calories,
 
-    delivery_date: ''
+    delivery_date: "",
+    import_status: "",
   };
 }
 
@@ -169,7 +168,7 @@ function logError(error) {
 
   sheet.appendRow([new Date(), errMessage]);
 
-  Logger.log(errMessage)
+  Logger.log(errMessage);
 }
 
 function jsonResponse(obj) {
@@ -177,7 +176,6 @@ function jsonResponse(obj) {
     ContentService.MimeType.JSON,
   );
 }
-
 
 function checkIsTildaWebhookTestRequest(payload) {
   return payload && payload.test === "test";

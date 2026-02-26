@@ -1,7 +1,7 @@
 const CONFIG = {
   ORDERS_SHEET: "Orders",
   LOGS_SHEET: "Logs",
-  RAW_SHEET: "Orders_Raw"
+  RAW_SHEET: "Orders_Raw",
 };
 
 const COLUMN_CONFIG = [
@@ -12,7 +12,7 @@ const COLUMN_CONFIG = [
   { key: "email", label: "Email" },
 
   // дата не приходит с tilda. Нужно в будущем при обработке заказа.
-  { key: 'delivery_date', label: "Дата доставки"},
+  { key: "delivery_date", label: "Дата доставки" },
 
   { key: "delivery_type", label: "Тип доставки" },
   { key: "day", label: "День према" },
@@ -26,18 +26,18 @@ const COLUMN_CONFIG = [
   { key: "discount_amount", label: "Сумма скидки" },
   { key: "subtotal", label: "Сумма до скидки" },
   { key: "delivery_price", label: "Стоимость доставки" },
-  
+
   { key: "street", label: "Улица" },
   { key: "home", label: "Дом" },
   { key: "flat", label: "Квартира" },
-  
-  
+
   { key: "payment_system", label: "Система оплаты" },
   { key: "payment_status_id", label: "ID транзакции" },
   // { key: "form_name", label: "Форма" },
 
   { key: "calories", label: "Калории" },
   { key: "order_timestamp", label: "Timestamp (служебный)" },
+  { key: "import_status", label: "Статус импорта" },
 ];
 
 const ORDER_COLORS = ["#FDEDEC", "#E8F8F5", "#EBF5FB", "#FEF9E7", "#F5EEF8"];
